@@ -1,0 +1,172 @@
+<html>
+	<head>
+		<title>Real-Time Networking</title>
+		<style type="text/css">
+			html * {
+				font-family: 'Source Sans Pro';
+				font-weight: 300;
+			}
+
+			html, body {	
+				font-size : 1.1em;
+				width     : 90%;
+				margin    : 0 auto;
+				padding   : 10px;
+			}
+
+			#rtc-table {
+				font-size: 1em;
+				text-align: center;
+				border-spacing:0px;
+			}
+
+			#rtc-table tr td {
+				padding : 1px 10px;
+			}
+
+			#rtc-table tr:nth-child(2n) {
+				background-color	: #f3f3f3;
+			}
+
+			.positive {
+				color : #2A9117;
+			}
+
+			.negative {
+				color : #E81361;
+			}
+
+			#refresh-button {
+				color : #BEC3CC;
+				transition : 0.5s;
+			}
+			#refresh-button:hover {
+				color : #61738F;
+				transition : 0.5s;
+			}
+
+		</style>
+	</head>
+	<body>
+
+		<link href="http://netdna.bootstrapcdn.com/font-awesome/3.1.1/css/font-awesome.css" rel="stylesheet">
+
+		<link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:300' rel='stylesheet' type='text/css'>
+
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
+		<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+		<script type="text/javascript"> 
+		 		google.load("visualization", "1", {packages:["corechart"]});
+		</script>
+
+		<script type="text/javascript" src="http://underscorejs.org/underscore-min.js"></script>
+		<script type="text/javascript" src="feasibility.js"></script>
+
+		<!-- mathjax -->
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']],
+							   displayMath: [['\\[','\\]'], ['$$','$$']]}});
+		</script>
+		<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+
+		<center>
+			<h2>
+				Random Task Set Feasibility Test 
+				<a class="icon-refresh" href="javascript:void(0)" id="refresh-button"></a>
+			</h2>
+			<table id="rtc-table"></table>
+
+			<div id="result"></div>
+			<div id="edf-result"></div>
+			<div id="dm-result"></div>
+
+			<div id="demand-chart" style="height:350px;"></div>
+		</center>
+
+		<script>
+		$(function() {
+
+			function render_taskset() {
+				var RTC = [];
+
+				var table = $('#rtc-table');
+				table.html('');
+
+				var header = $('<tr>');
+				header.append($('<td>').text('Execution Time'));
+				header.append($('<td>').text('Deadline'));
+				header.append($('<td>').text('Period'));
+
+				table.append(header);
+
+				var count = _.random(2, 5);
+
+				for(var i = 0; i < count; ++i) {
+					var C = _.random(1, 4);
+					var T = _.random(4, 10);
+					var D = _.random(4, T);
+
+					var row = $('<tr>');
+
+					row.append($('<td>').text(C));
+					row.append($('<td>').text(D));
+					row.append($('<td>').text(T));
+
+					RTC.push({'C' :C, 'T':T,'D' :D});
+					table.append(row);
+				}
+
+				var result_div = $('#result').html('');
+
+				var edf_result = $('<div>').appendTo(result_div);
+				if(check_edf(RTC)) {
+					edf_result.text('Task set is EDF schedulable').addClass('positive');
+				} else {
+					edf_result.text('Task set is not EDF schedulable').addClass('negative');
+				}
+
+				var dm_result = $('<div>').appendTo(result_div);
+				if(check_dm(RTC)) {
+					dm_result.text('Task set is DM schedulable').addClass('positive');
+				} else {
+					dm_result.text('Task set is not DM schedulable').addClass('negative');
+				}
+
+
+				var H = _.chain(RTC)
+					.pluck('T')
+					.foldl(lcm, 1)
+					.value();
+					
+				var demand = processor_demand(RTC, _.range(0,H));
+
+				demand = _(demand).map(function(e) {
+					return [ e[0].toString(), e[0], e[1] ];
+				})
+				
+				demand.unshift(['i', 'Boundary', 'h(t)']);
+
+
+				var data = google.visualization.arrayToDataTable(demand);
+
+		        var options = {
+		        	title : 'Processor Demand Function',
+		        	vAxis: {title: 'h(t)'},
+		        	series : {0 : {type : 'steppedArea'}, 
+		        			  1 : {type : 'steppedArea'}}
+		        };
+
+
+		        var chart = new google.visualization.ComboChart(document.getElementById('demand-chart'));
+
+		        chart.draw(data, options);
+		        
+        	}
+
+			render_taskset();
+			$('#refresh-button').click(render_taskset);
+		});
+		</script>
+	</body>
+</html>
